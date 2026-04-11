@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.xlsx
+*.json
+!package.json
+.claude/
+run.sh
+run_app.py

@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fuel Reimbursement Cycle Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛽</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --black: #0a0a0a;
+  --light-grey: #f5f5f5;
+  --white: #ffffff;
+  --grey: #e5e5e5;
+  --green: #6a9733;
+  --green-light: #e8f0db;
+  --green-mid: #b8cf8e;
+  --green-dark: #4a6b24;
+  --text-primary: #0a0a0a;
+  --text-secondary: #525252;
+  --text-muted: #8a8a8a;
+  --border: #e5e5e5;
+  --border-light: #efefef;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--light-grey);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout ── */
+.app { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 300px;
+  min-width: 300px;
+  background: var(--white);
+  border-right: 1px solid var(--border);
+  padding: 1.5rem;
+  overflow-y: auto;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.main {
+  flex: 1;
+  padding: 2rem 2.5rem 4rem;
+  overflow-y: auto;
+  min-height: 100vh;
+}
+
+/* ── Sidebar: brand ── */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.2rem;
+}
+.brand-icon {
+  width: 36px; height: 36px;
+  background: var(--green-light);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+}
+.brand-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ── Tabs ── */
+.tab-bar {
+  display: flex;
+  background: var(--light-grey);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  margin-bottom: 1.2rem;
+}
+.tab-btn {
+  flex: 1;
+  padding: 0.5rem 0.4rem;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.tab-btn.active {
+  background: var(--white);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+.tab-btn:not(.active):hover { color: var(--text-secondary); }
+
+/* ── Sidebar sections ── */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 1rem 0 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Inputs ── */
+.input-group { margin-bottom: 0.7rem; }
+.input-group label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+.input-group input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  outline: none;
+  transition: all var(--transition);
+}
+.input-group input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(106, 151, 51, 0.1);
+}
+.input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+/* ── Generate button ── */
+.generate-btn {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  margin-top: 1rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--green);
+  color: var(--white);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.generate-btn:hover {
+  background: var(--green-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(106, 151, 51, 0.25);
+}
+.generate-btn:active { transform: translateY(0); }
+.generate-btn .ripple {
+  position: absolute; border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  transform: scale(0);
+  animation: ripple-anim 0.5s ease-out;
+  pointer-events: none;
+}
+@keyframes ripple-anim { to { transform: scale(4); opacity: 0; } }
+
+/* ── Hero ── */
+.hero { margin-bottom: 0.5rem; }
+.hero-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-bottom: 0.3rem;
+}
+.hero-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--green-light);
+  color: var(--green-dark);
+  border: 1px solid var(--green-mid);
+}
+
+/* ── Section header ── */
+.sec-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 2rem 0 1rem;
+}
+.sec-header .sec-icon {
+  width: 32px; height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.95rem;
+  background: var(--green-light);
+}
+.sec-header h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.sec-header .sec-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── KPI Cards ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.kpi-card {
+  background: var(--white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.1rem;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition);
+  cursor: default;
+}
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--border);
+}
+.kpi-card:hover {
+  border-color: var(--green-mid);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+.kpi-card.accent::before { background: var(--green); }
+.kpi-card.accent-gold::before { background: linear-gradient(135deg, #d97706, #f59e0b); }
+.kpi-icon { font-size: 1.2rem; margin-bottom: 0.4rem; display: block; }
+.kpi-lbl {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 0.2rem;
+}
+.kpi-val {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-card.accent .kpi-val { color: var(--green-dark); }
+
+/* ── Table ── */
+.table-wrap {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  background: var(--white);
+  margin-bottom: 1.5rem;
+}
+.fuel-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.fuel-tbl thead th {
+  background: var(--light-grey);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 0.75rem 1rem;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+.fuel-tbl thead th:first-child { text-align: center; width: 56px; }
+.fuel-tbl tbody td {
+  padding: 0.7rem 1rem;
+  text-align: right;
+  border-bottom: 1px solid var(--border-light);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.fuel-tbl tbody td:first-child { text-align: center; }
+.fuel-tbl tbody tr:hover { background: rgba(106,151,51,0.03); }
+.fuel-tbl .total-row {
+  background: var(--green-light) !important;
+}
+.fuel-tbl .total-row td {
+  font-weight: 700;
+  color: var(--green-dark);
+  padding-top: 0.8rem;
+  padding-bottom: 0.8rem;
+  border-bottom: none;
+}
+.refuel-num {
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: var(--radius-sm);
+  background: var(--green-light);
+  color: var(--green);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.disc-yes { color: var(--green) !important; font-weight: 600; }
+.disc-no { color: var(--text-muted) !important; }
+
+/* ── Odometer History ── */
+.odo-history { animation: fadeIn 0.4s ease; }
+.odo-card {
+  background: var(--white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.2rem;
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all var(--transition);
+}
+.odo-card:hover {
+  border-color: var(--green-mid);
+  box-shadow: var(--shadow-md);
+}
+.odo-month {
+  min-width: 50px;
+  text-align: center;
+}
+.odo-month-name {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.odo-month-year {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.odo-divider {
+  width: 1px;
+  height: 40px;
+  background: var(--border);
+}
+.odo-details { flex: 1; display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.odo-detail-item { }
+.odo-detail-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.odo-detail-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.odo-km-badge {
+  padding: 0.3rem 0.7rem;
+  background: var(--green-light);
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+.odo-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--text-muted);
+}
+.odo-empty-icon { font-size: 2.5rem; margin-bottom: 0.6rem; opacity: 0.4; }
+.odo-empty-text { font-size: 0.88rem; font-weight: 500; }
+.odo-empty-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+/* ── Empty state ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 55vh;
+  text-align: center;
+  animation: fadeIn 0.5s ease;
+}
+.empty-icon {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+  opacity: 0.4;
+  animation: float 3s ease-in-out infinite;
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.empty-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.4rem;
+}
+.empty-desc {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  max-width: 380px;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+.steps { display: flex; gap: 2rem; }
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+.step-num {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--green-light);
+  color: var(--green);
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+}
+.step:hover .step-num {
+  background: var(--green-mid);
+  transform: scale(1.08);
+}
+.step-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ── Animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.anim-in { animation: fadeInUp 0.4s ease both; }
+.anim-in:nth-child(2) { animation-delay: 0.05s; }
+.anim-in:nth-child(3) { animation-delay: 0.1s; }
+.anim-in:nth-child(4) { animation-delay: 0.15s; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  padding: 0.7rem 1.1rem;
+  background: var(--white);
+  border: 1px solid var(--green-mid);
+  border-radius: var(--radius-md);
+  color: var(--green-dark);
+  font-size: 0.82rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  transform: translateY(16px);
+  transition: all 0.3s ease;
+  z-index: 100;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .main { padding: 1.5rem 1.5rem 3rem; }
+}
+@media (max-width: 768px) {
+  .app { flex-direction: column; }
+  .sidebar {
+    width: 100%; min-width: 100%;
+    position: relative; height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .main { padding: 1.5rem 1rem 3rem; }
+  .hero-title { font-size: 1.4rem; }
+}
+@media (max-width: 480px) {
+  .kpi-grid { grid-template-columns: 1fr; }
+  .steps { flex-direction: column; gap: 0.8rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">⛽</div>
+      <span class="brand-name">Fuel Planner</span>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="spend" onclick="setTab('spend')">Spend Plan</button>
+      <button class="tab-btn" data-tab="odometer" onclick="setTab('odometer')">Odometer Record</button>
+    </div>
+
+    <!-- Spend Plan inputs -->
+    <div id="spendInputs">
+      <div class="section-label">Cycle Settings</div>
+      <div class="input-group">
+        <label>Cycle Start Date (15th)</label>
+        <input type="date" id="startDate" value="2026-04-15">
+      </div>
+      <div class="input-group">
+        <label>Start Odometer (km)</label>
+        <input type="number" id="startOdo" value="50000" step="100">
+      </div>
+
+      <div class="section-label">Vehicle</div>
+      <div class="input-group">
+        <label>Daily Office Commute (km)</label>
+        <input type="number" id="dailyKm" value="52" step="1">
+      </div>
+      <div class="input-group">
+        <label>Mileage (km/l)</label>
+        <input type="number" id="mileage" value="14" step="0.5">
+      </div>
+
+      <div class="section-label">Fuel &amp; Budget</div>
+      <div class="input-group">
+        <label>Monthly Cap (INR)</label>
+        <input type="number" id="cap" value="19300" step="100">
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>Min Price (₹/L)</label>
+          <input type="number" id="priceMin" value="100" step="0.5">
+        </div>
+        <div class="input-group">
+          <label>Max Price (₹/L)</label>
+          <input type="number" id="priceMax" value="103" step="0.5">
+        </div>
+      </div>
+
+      <button class="generate-btn" onclick="generate(event)">Generate Plan</button>
+    </div>
+
+    <!-- Odometer Record inputs -->
+    <div id="odoInputs" style="display:none">
+      <div class="section-label">Log a Reading</div>
+      <div class="input-group">
+        <label>Month</label>
+        <input type="month" id="odoMonth" value="2026-04">
+      </div>
+      <div class="input-group">
+        <label>Start Odometer (km)</label>
+        <input type="number" id="odoStart" value="50000" step="100">
+      </div>
+      <div class="input-group">
+        <label>End Odometer (km)</label>
+        <input type="number" id="odoEnd" value="52700" step="100">
+      </div>
+      <button class="generate-btn" onclick="saveOdoReading(event)">Save Reading</button>
+    </div>
+
+    <div style="flex:1"></div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main" id="mainContent">
+    <div id="resultArea">
+      <div class="hero">
+        <div class="hero-title">Fuel Reimbursement Cycle Planner</div>
+        <div class="hero-subtitle">Plan your monthly fuel reimbursement cycle with precision</div>
+      </div>
+      <div class="empty-state">
+        <div class="empty-icon">⛽</div>
+        <div class="empty-title">Ready to Plan Your Cycle</div>
+        <div class="empty-desc">
+          Configure your cycle parameters in the sidebar and hit
+          <strong>Generate Plan</strong> to see your optimized refuelling breakdown.
+        </div>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><div class="step-label">Set dates</div></div>
+          <div class="step"><div class="step-num">2</div><div class="step-label">Enter vehicle info</div></div>
+          <div class="step"><div class="step-num">3</div><div class="step-label">Generate</div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Seeded RNG (mulberry32) ──
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// ── Calendar ──
+function cycleDates(startStr) {
+  const d = new Date(startStr + 'T00:00:00');
+  if (d.getDate() !== 15) throw new Error('Cycle must start on the 15th');
+  const m = d.getMonth(), y = d.getFullYear();
+  return { start: d, end: new Date(y, m + 1, 14) };
+}
+
+function countWorkingDays(start, end) {
+  let count = 0;
+  const cur = new Date(start);
+  while (cur <= end) {
+    const dow = cur.getDay();
+    if (dow >= 1 && dow <= 5) count++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return count;
+}
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function fmtDate(d) { return MONTHS_FULL[d.getMonth()] + ' ' + d.getDate(); }
+function fmtDateFull(d) { return fmtDate(d) + ', ' + d.getFullYear(); }
+
+// ── Core math ──
+function r2(v) { return Math.round(v * 100) / 100; }
+function applyDiscount(amount, threshold = 2500, disc = 100) {
+  return amount > threshold ? disc : 0;
+}
+
+function allocateRefuels(targetLitres, tankMax, rng, prices, cap) {
+  const n = prices.length;
+  if (n === 0) return null;
+  if (n === 1) {
+    let vol = r2(Math.min(targetLitres, tankMax - 0.01));
+    let amt = r2(vol * prices[0]);
+    let disc = applyDiscount(amt);
+    return [{ number:1, litres:vol, price:prices[0], amount:amt, discount:disc, final:r2(amt-disc) }];
+  }
+  const mainCount = n - 1;
+  const mainMin = 35, mainMax = Math.min(44.5, tankMax - 0.5);
+  let volumes = [];
+  for (let i = 0; i < mainCount; i++) volumes.push(r2(rng() * (mainMax - mainMin) + mainMin));
+
+  let remaining = targetLitres - volumes.reduce((a,b) => a+b, 0);
+  if (remaining < 0) {
+    const total = volumes.reduce((a,b) => a+b, 0);
+    const excess = total - targetLitres;
+    for (let i = 0; i < mainCount; i++) volumes[i] = r2(volumes[i] - excess * (volumes[i] / total));
+    remaining = r2(targetLitres - volumes.reduce((a,b) => a+b, 0));
+  }
+  if (remaining >= tankMax) return null;
+  volumes.push(r2(remaining));
+
+  let entries = volumes.map((vol, i) => ({
+    number: i+1, litres: vol, price: prices[i],
+    amount: r2(vol * prices[i]), discount: 0, final: 0,
+  }));
+
+  // Rebalance to stay under cap
+  let rawTotal = r2(entries.reduce((s,e) => s + e.amount, 0));
+  for (let idx = entries.length - 1; idx >= 0 && rawTotal > cap; idx--) {
+    const e = entries[idx];
+    const overshoot = rawTotal - cap;
+    let newL = e.litres - overshoot / e.price;
+    e.litres = Math.max(0, Math.floor(newL * 100) / 100);
+    e.amount = r2(e.litres * e.price);
+    rawTotal = r2(entries.reduce((s,x) => s + x.amount, 0));
+  }
+
+  entries.forEach(e => { e.discount = applyDiscount(e.amount); e.final = r2(e.amount - e.discount); });
+  return entries;
+}
+
+function planRefuels(targetLitres, tankMax, rng, priceMin, priceMax, cap) {
+  let prices4 = Array.from({length:4}, () => r2(rng() * (priceMax - priceMin) + priceMin));
+  let result = allocateRefuels(targetLitres, tankMax, rng, prices4, cap);
+  if (result && result.every(e => e.litres < tankMax)) return result;
+  let prices5 = [...prices4, r2(rng() * (priceMax - priceMin) + priceMin)];
+  result = allocateRefuels(targetLitres, tankMax, rng, prices5, cap);
+  if (result && result.every(e => e.litres < tankMax)) return result;
+  throw new Error('Cannot plan refuels within constraints');
+}
+
+// ── Deterministic seed from date string ──
+function dateSeed(dateStr) {
+  let h = 0;
+  for (let i = 0; i < dateStr.length; i++) { h = ((h << 5) - h + dateStr.charCodeAt(i)) | 0; }
+  return Math.abs(h) || 42;
+}
+
+// ── Plan: spend-driven ──
+function planSpend(opts) {
+  const { start, end } = cycleDates(opts.startDate);
+  const workDays = countWorkingDays(start, end);
+  const planPrice = (opts.priceMin + opts.priceMax) / 2;
+  const targetLitres = opts.cap / planPrice;
+  const targetKm = targetLitres * opts.mileage;
+  const officeKm = workDays * opts.dailyKm;
+  const extraKm = Math.max(0, targetKm - officeKm);
+  const totalKm = r2(officeKm + extraKm);
+  const rng = mulberry32(dateSeed(opts.startDate));
+  const refuels = planRefuels(targetLitres, 45, rng, opts.priceMin, opts.priceMax, opts.cap);
+  const totalLitres = r2(refuels.reduce((s,r) => s + r.litres, 0));
+  const totalRaw = r2(refuels.reduce((s,r) => s + r.amount, 0));
+  const totalFinal = r2(refuels.reduce((s,r) => s + r.final, 0));
+  return {
+    cycleStart: start, cycleEnd: end, workingDays: workDays,
+    officeKm: r2(officeKm), extraKm: r2(extraKm), totalKm,
+    mileage: opts.mileage, fuelUsed: totalLitres,
+    rawCost: totalRaw, finalBilled: totalFinal,
+    startOdo: opts.startOdo, endOdo: r2(opts.startOdo + totalKm),
+    refuels, totalLitres, totalRaw, totalFinal,
+  };
+}
+
+// ── UI State ──
+let currentTab = 'spend';
+let lastResult = null;
+
+function setTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('spendInputs').style.display = tab === 'spend' ? 'block' : 'none';
+  document.getElementById('odoInputs').style.display = tab === 'odometer' ? 'block' : 'none';
+  if (tab === 'odometer') renderOdoHistory();
+  else if (lastResult) renderResult(lastResult);
+  else renderEmpty();
+}
+
+function val(id) { return parseFloat(document.getElementById(id).value); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function fmt(n) { return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmt1(n) { return n.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+
+function kpiCard(icon, label, value, cls = '') {
+  return `<div class="kpi-card ${cls} anim-in">
+    <span class="kpi-icon">${icon}</span>
+    <div class="kpi-lbl">${label}</div>
+    <div class="kpi-val">${value}</div>
+  </div>`;
+}
+
+function renderEmpty() {
+  document.getElementById('resultArea').innerHTML = `
+    <div class="hero">
+      <div class="hero-title">Fuel Reimbursement Cycle Planner</div>
+      <div class="hero-subtitle">Plan your monthly fuel reimbursement cycle with precision</div>
+    </div>
+    <div class="empty-state">
+      <div class="empty-icon">⛽</div>
+      <div class="empty-title">Ready to Plan Your Cycle</div>
+      <div class="empty-desc">Configure your cycle parameters in the sidebar and hit <strong>Generate Plan</strong> to see your optimized refuelling breakdown.</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-label">Set dates</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-label">Enter vehicle info</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-label">Generate</div></div>
+      </div>
+    </div>`;
+}
+
+function generate(event) {
+  if (event) {
+    const btn = event.currentTarget, rect = btn.getBoundingClientRect();
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    const size = Math.max(rect.width, rect.height);
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = (event.clientX - rect.left - size/2) + 'px';
+    ripple.style.top = (event.clientY - rect.top - size/2) + 'px';
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 500);
+  }
+  try {
+    const opts = {
+      startDate: document.getElementById('startDate').value,
+      startOdo: val('startOdo'),
+      dailyKm: val('dailyKm'),
+      mileage: val('mileage'),
+      cap: val('cap'),
+      priceMin: val('priceMin'),
+      priceMax: val('priceMax'),
+    };
+    if (opts.mileage <= 0) throw new Error('Mileage must be > 0');
+    if (opts.priceMax < opts.priceMin) throw new Error('Max price must be >= min price');
+    lastResult = planSpend(opts);
+    renderResult(lastResult);
+    showToast('Plan generated successfully');
+  } catch (e) {
+    showToast('Error: ' + e.message);
+  }
+}
+
+function renderResult(r) {
+  const savings = r2(r.rawCost - r.finalBilled);
+  let html = `
+    <div class="hero" style="animation: fadeIn 0.35s ease">
+      <div class="hero-title">Fuel Reimbursement Cycle Planner</div>
+      <div class="hero-subtitle">
+        ${fmtDate(r.cycleStart)} — ${fmtDateFull(r.cycleEnd)}
+        <span class="badge">Spend Plan</span>
+      </div>
+    </div>
+    <div class="sec-header anim-in"><div class="sec-icon">📊</div><h2>Cycle Summary</h2><div class="sec-line"></div></div>
+    <div class="kpi-grid">
+      ${kpiCard('📅', 'Working Days', r.workingDays)}
+      ${kpiCard('🛣️', 'Office Commute', fmt(r.officeKm) + ' km')}
+      ${kpiCard('🏖️', 'Extra Weekend KM', fmt(r.extraKm) + ' km')}
+      ${kpiCard('📏', 'Total Distance', fmt(r.totalKm) + ' km')}
+    </div>
+    <div class="kpi-grid">
+      ${kpiCard('⛽', 'Fuel Used', fmt(r.fuelUsed) + ' L')}
+      ${kpiCard('💵', 'Raw Fuel Cost', '₹ ' + fmt(r.rawCost), 'accent')}
+      ${kpiCard('✅', 'Final Billed', '₹ ' + fmt(r.finalBilled), 'accent')}
+      ${kpiCard('💰', 'Discount Saved', '₹ ' + fmt(savings), 'accent-gold')}
+    </div>
+    <div class="kpi-grid">
+      ${kpiCard('🏁', 'Start Odometer', fmt1(r.startOdo) + ' km')}
+      ${kpiCard('🏁', 'End Odometer', fmt1(r.endOdo) + ' km')}
+      ${kpiCard('⚙️', 'Mileage', r.mileage + ' km/l')}
+      ${kpiCard('📦', 'Refuel Count', r.refuels.length)}
+    </div>
+    <div class="sec-header anim-in"><div class="sec-icon">⛽</div><h2>Refuelling Breakdown</h2><div class="sec-line"></div></div>
+    <div class="table-wrap anim-in"><table class="fuel-tbl"><thead><tr>
+      <th>#</th><th>Volume</th><th>Price / L</th><th>Amount</th><th>Discount</th><th>Final Bill</th>
+    </tr></thead><tbody>`;
+
+  r.refuels.forEach(ref => {
+    const dcls = ref.discount > 0 ? 'disc-yes' : 'disc-no';
+    const dval = ref.discount > 0 ? '₹ ' + fmt(ref.discount) : '—';
+    html += `<tr>
+      <td><span class="refuel-num">${ref.number}</span></td>
+      <td>${fmt(ref.litres)} L</td><td>₹ ${fmt(ref.price)}</td>
+      <td>₹ ${fmt(ref.amount)}</td><td class="${dcls}">${dval}</td><td>₹ ${fmt(ref.final)}</td>
+    </tr>`;
+  });
+
+  const totalDisc = r2(r.refuels.reduce((s,x) => s + x.discount, 0));
+  html += `<tr class="total-row">
+    <td>TOTAL</td><td>${fmt(r.totalLitres)} L</td><td></td>
+    <td>₹ ${fmt(r.totalRaw)}</td><td class="disc-yes">₹ ${fmt(totalDisc)}</td><td>₹ ${fmt(r.totalFinal)}</td>
+  </tr></tbody></table></div>`;
+
+  document.getElementById('resultArea').innerHTML = html;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Odometer History (localStorage) ──
+function getOdoHistory() {
+  try { return JSON.parse(localStorage.getItem('odoHistory') || '[]'); }
+  catch { return []; }
+}
+
+function saveOdoHistory(data) {
+  localStorage.setItem('odoHistory', JSON.stringify(data));
+}
+
+function saveOdoReading(event) {
+  if (event) {
+    const btn = event.currentTarget, rect = btn.getBoundingClientRect();
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    const size = Math.max(rect.width, rect.height);
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = (event.clientX - rect.left - size/2) + 'px';
+    ripple.style.top = (event.clientY - rect.top - size/2) + 'px';
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 500);
+  }
+
+  const month = document.getElementById('odoMonth').value;
+  const start = val('odoStart');
+  const end = val('odoEnd');
+
+  if (!month) { showToast('Please select a month'); return; }
+  if (end < start) { showToast('End must be >= Start'); return; }
+
+  const history = getOdoHistory();
+  // Replace if same month exists
+  const idx = history.findIndex(h => h.month === month);
+  const entry = { month, start, end, km: r2(end - start) };
+  if (idx >= 0) history[idx] = entry;
+  else history.push(entry);
+
+  // Sort descending by month, keep last 3
+  history.sort((a, b) => b.month.localeCompare(a.month));
+  saveOdoHistory(history.slice(0, 3));
+
+  showToast('Reading saved');
+  renderOdoHistory();
+}
+
+function deleteOdoReading(month) {
+  const history = getOdoHistory().filter(h => h.month !== month);
+  saveOdoHistory(history);
+  showToast('Reading removed');
+  renderOdoHistory();
+}
+
+function renderOdoHistory() {
+  const history = getOdoHistory();
+
+  let html = `
+    <div class="hero" style="animation: fadeIn 0.35s ease">
+      <div class="hero-title">Odometer Record</div>
+      <div class="hero-subtitle">Track your last 3 months of odometer readings</div>
+    </div>
+    <div class="sec-header anim-in"><div class="sec-icon">🏁</div><h2>Recent Readings</h2><div class="sec-line"></div></div>`;
+
+  if (history.length === 0) {
+    html += `
+      <div class="odo-empty anim-in">
+        <div class="odo-empty-icon">📋</div>
+        <div class="odo-empty-text">No readings logged yet</div>
+        <div class="odo-empty-hint">Use the sidebar to log your first odometer reading</div>
+      </div>`;
+  } else {
+    html += '<div class="odo-history">';
+    history.forEach((h, i) => {
+      const [y, m] = h.month.split('-');
+      const monthName = MONTHS[parseInt(m) - 1];
+      html += `
+        <div class="odo-card anim-in" style="animation-delay:${i * 0.06}s">
+          <div class="odo-month">
+            <div class="odo-month-name">${monthName}</div>
+            <div class="odo-month-year">${y}</div>
+          </div>
+          <div class="odo-divider"></div>
+          <div class="odo-details">
+            <div class="odo-detail-item">
+              <div class="odo-detail-label">Start</div>
+              <div class="odo-detail-value">${fmt1(h.start)} km</div>
+            </div>
+            <div class="odo-detail-item">
+              <div class="odo-detail-label">End</div>
+              <div class="odo-detail-value">${fmt1(h.end)} km</div>
+            </div>
+            <div class="odo-detail-item">
+              <div class="odo-detail-label">Distance</div>
+              <div class="odo-km-badge">${fmt(h.km)} km</div>
+            </div>
+          </div>
+          <button onclick="deleteOdoReading('${h.month}')" style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--text-muted);padding:0.3rem;border-radius:6px;transition:color 0.2s" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='var(--text-muted)'" title="Remove">✕</button>
+        </div>`;
+    });
+    html += '</div>';
+  }
+
+  document.getElementById('resultArea').innerHTML = html;
+}
+
+// ── Keyboard shortcut ──
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    e.preventDefault();
+    if (currentTab === 'spend') generate(null);
+    else saveOdoReading(null);
+  }
+});
+</script>
+</body>
+</html>
