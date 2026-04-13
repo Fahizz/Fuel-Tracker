@@ -6,6 +6,8 @@
 <title>Fuel Reimbursement Cycle Planner</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛽</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -75,7 +77,7 @@ body {
 }
 .brand-icon {
   width: 36px; height: 36px;
-  background: var(--green-light);
+  background: var(--light-grey);
   border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
   font-size: 1.1rem;
@@ -84,35 +86,77 @@ body {
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-primary);
+  flex: 1;
+}
+.history-btn {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+.history-btn:hover {
+  color: var(--black);
+  border-color: var(--black);
+  background: var(--light-grey);
+}
+.history-btn.active {
+  color: var(--white);
+  background: var(--black);
+  border-color: var(--black);
 }
 
-/* ── Tabs ── */
-.tab-bar {
-  display: flex;
-  background: var(--light-grey);
-  border-radius: var(--radius-md);
-  padding: 3px;
-  margin-bottom: 1.2rem;
+/* ── Odometer panel (sidebar overlay) ── */
+.odo-panel {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--white);
+  z-index: 10;
+  padding: 1.5rem;
+  overflow-y: auto;
+  animation: fadeIn 0.2s ease;
 }
-.tab-btn {
-  flex: 1;
-  padding: 0.5rem 0.4rem;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
+.odo-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.odo-panel-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.odo-panel-close {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--white);
   color: var(--text-muted);
-  font-family: inherit;
-  font-size: 0.78rem;
-  font-weight: 600;
   cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
   transition: all var(--transition);
 }
-.tab-btn.active {
-  background: var(--white);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-sm);
+.odo-panel-close:hover {
+  color: var(--black);
+  border-color: var(--black);
 }
-.tab-btn:not(.active):hover { color: var(--text-secondary); }
+.odo-panel .odo-card {
+  padding: 0.8rem 0.9rem;
+  margin-bottom: 0.5rem;
+  gap: 0.75rem;
+}
+.odo-panel .odo-details { gap: 1rem; }
+.odo-panel .odo-month-year { font-size: 1.1rem; }
+.odo-panel .odo-detail-value { font-size: 0.85rem; }
+.odo-panel .odo-km-badge { font-size: 0.72rem; padding: 0.2rem 0.5rem; }
 
 /* ── Sidebar sections ── */
 .section-label {
@@ -136,7 +180,7 @@ body {
   color: var(--text-secondary);
   margin-bottom: 0.25rem;
 }
-.input-group input {
+.input-group input, .input-group select {
   width: 100%;
   padding: 0.55rem 0.75rem;
   background: var(--white);
@@ -148,10 +192,28 @@ body {
   font-weight: 500;
   outline: none;
   transition: all var(--transition);
+  -webkit-appearance: none;
+  appearance: none;
 }
-.input-group input:focus {
-  border-color: var(--green);
-  box-shadow: 0 0 0 3px rgba(106, 151, 51, 0.1);
+.input-group input:focus, .input-group select:focus {
+  border-color: var(--black);
+  box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.08);
+}
+/* Custom date input */
+.input-group input[type="date"],
+.input-group input[type="month"] {
+  position: relative;
+  cursor: pointer;
+}
+.input-group input[type="date"]::-webkit-calendar-picker-indicator,
+.input-group input[type="month"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.input-group input[type="date"]:hover::-webkit-calendar-picker-indicator,
+.input-group input[type="month"]:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
 }
 .input-row {
   display: grid;
@@ -159,14 +221,14 @@ body {
   gap: 0.5rem;
 }
 
-/* ── Generate button ── */
+/* ── Generate button — primary #0a0a0a ── */
 .generate-btn {
   width: 100%;
   padding: 0.75rem 1.5rem;
   margin-top: 1rem;
   border: none;
   border-radius: var(--radius-md);
-  background: var(--green);
+  background: var(--black);
   color: var(--white);
   font-family: inherit;
   font-size: 0.9rem;
@@ -177,19 +239,49 @@ body {
   overflow: hidden;
 }
 .generate-btn:hover {
-  background: var(--green-dark);
+  background: #222;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(106, 151, 51, 0.25);
+  box-shadow: 0 4px 12px rgba(10,10,10,0.18);
 }
 .generate-btn:active { transform: translateY(0); }
 .generate-btn .ripple {
   position: absolute; border-radius: 50%;
-  background: rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.2);
   transform: scale(0);
   animation: ripple-anim 0.5s ease-out;
   pointer-events: none;
 }
 @keyframes ripple-anim { to { transform: scale(4); opacity: 0; } }
+
+/* ── Content Tabs (in main area) ── */
+.content-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--light-grey);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  margin-bottom: 1.5rem;
+  width: fit-content;
+}
+.content-tab-btn {
+  padding: 0.5rem 1.2rem;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.content-tab-btn.active {
+  background: var(--white);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+.content-tab-btn:not(.active):hover { color: var(--text-secondary); }
 
 /* ── Hero ── */
 .hero { margin-bottom: 0.5rem; }
@@ -218,9 +310,9 @@ body {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: var(--green-light);
-  color: var(--green-dark);
-  border: 1px solid var(--green-mid);
+  background: var(--light-grey);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
 }
 
 /* ── Section header ── */
@@ -235,7 +327,7 @@ body {
   border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
   font-size: 0.95rem;
-  background: var(--green-light);
+  background: var(--light-grey);
 }
 .sec-header h2 {
   font-size: 1.1rem;
@@ -274,11 +366,11 @@ body {
   background: var(--border);
 }
 .kpi-card:hover {
-  border-color: var(--green-mid);
+  border-color: var(--grey);
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
-.kpi-card.accent::before { background: var(--green); }
+.kpi-card.accent::before { background: var(--black); }
 .kpi-card.accent-gold::before { background: linear-gradient(135deg, #d97706, #f59e0b); }
 .kpi-icon { font-size: 1.2rem; margin-bottom: 0.4rem; display: block; }
 .kpi-lbl {
@@ -296,7 +388,7 @@ body {
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
-.kpi-card.accent .kpi-val { color: var(--green-dark); }
+.kpi-card.accent .kpi-val { color: var(--black); }
 
 /* ── Table ── */
 .table-wrap {
@@ -331,13 +423,13 @@ body {
   color: var(--text-primary);
 }
 .fuel-tbl tbody td:first-child { text-align: center; }
-.fuel-tbl tbody tr:hover { background: rgba(106,151,51,0.03); }
+.fuel-tbl tbody tr:hover { background: rgba(10,10,10,0.02); }
 .fuel-tbl .total-row {
-  background: var(--green-light) !important;
+  background: var(--light-grey) !important;
 }
 .fuel-tbl .total-row td {
   font-weight: 700;
-  color: var(--green-dark);
+  color: var(--black);
   padding-top: 0.8rem;
   padding-bottom: 0.8rem;
   border-bottom: none;
@@ -347,8 +439,8 @@ body {
   align-items: center; justify-content: center;
   width: 26px; height: 26px;
   border-radius: var(--radius-sm);
-  background: var(--green-light);
-  color: var(--green);
+  background: var(--light-grey);
+  color: var(--black);
   font-weight: 700;
   font-size: 0.8rem;
 }
@@ -369,13 +461,10 @@ body {
   transition: all var(--transition);
 }
 .odo-card:hover {
-  border-color: var(--green-mid);
+  border-color: var(--grey);
   box-shadow: var(--shadow-md);
 }
-.odo-month {
-  min-width: 50px;
-  text-align: center;
-}
+.odo-month { min-width: 50px; text-align: center; }
 .odo-month-name {
   font-size: 0.65rem;
   font-weight: 700;
@@ -389,13 +478,8 @@ body {
   color: var(--text-primary);
   line-height: 1;
 }
-.odo-divider {
-  width: 1px;
-  height: 40px;
-  background: var(--border);
-}
+.odo-divider { width: 1px; height: 40px; background: var(--border); }
 .odo-details { flex: 1; display: flex; gap: 1.5rem; flex-wrap: wrap; }
-.odo-detail-item { }
 .odo-detail-label {
   font-size: 0.62rem;
   font-weight: 600;
@@ -411,11 +495,18 @@ body {
 }
 .odo-km-badge {
   padding: 0.3rem 0.7rem;
-  background: var(--green-light);
+  background: var(--light-grey);
   border-radius: 20px;
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--green-dark);
+  color: var(--black);
+}
+.odo-auto-tag {
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: var(--green);
+  margin-left: 2px;
+  vertical-align: middle;
 }
 .odo-empty {
   text-align: center;
@@ -469,15 +560,17 @@ body {
 .step-num {
   width: 32px; height: 32px;
   border-radius: 50%;
-  background: var(--green-light);
-  color: var(--green);
+  background: var(--light-grey);
+  color: var(--black);
   font-weight: 700;
   font-size: 0.85rem;
   display: flex; align-items: center; justify-content: center;
   transition: all var(--transition);
+  border: 1px solid var(--border);
 }
 .step:hover .step-num {
-  background: var(--green-mid);
+  background: var(--black);
+  color: var(--white);
   transform: scale(1.08);
 }
 .step-label {
@@ -506,10 +599,10 @@ body {
   bottom: 1.5rem;
   right: 1.5rem;
   padding: 0.7rem 1.1rem;
-  background: var(--white);
-  border: 1px solid var(--green-mid);
+  background: var(--black);
+  border: none;
   border-radius: var(--radius-md);
-  color: var(--green-dark);
+  color: var(--white);
   font-size: 0.82rem;
   font-weight: 600;
   box-shadow: var(--shadow-lg);
@@ -520,6 +613,275 @@ body {
   pointer-events: none;
 }
 .toast.show { opacity: 1; transform: translateY(0); }
+
+/* ── Settings toggle ── */
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0;
+  margin-top: 0.8rem;
+  cursor: pointer;
+  border-top: 1px solid var(--border);
+  transition: all var(--transition);
+}
+.settings-toggle:hover .settings-toggle-label { color: var(--text-primary); }
+.settings-toggle-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.settings-toggle-icon {
+  font-size: 1rem;
+  color: var(--text-muted);
+  transition: transform var(--transition);
+  line-height: 1;
+}
+.settings-toggle-icon.open { transform: rotate(90deg); }
+.settings-panel {
+  animation: fadeIn 0.25s ease;
+}
+
+/* ── Shell Invoice — exact PDF replica ── */
+@font-face {
+  font-family: 'Montreal';
+  src: url('fonts/Montreal-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal;
+}
+@font-face {
+  font-family: 'Montreal';
+  src: url('fonts/Montreal-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal;
+}
+@font-face {
+  font-family: 'Futura';
+  src: url('fonts/Futura-Bold.otf') format('opentype');
+  font-weight: 700; font-style: normal;
+}
+
+.invoices-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 2rem;
+  margin-top: 1rem;
+}
+.invoice-card-wrap { position: relative; }
+.invoice-export-btn {
+  position: absolute;
+  top: -12px;
+  right: 8px;
+  z-index: 2;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--white);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+.invoice-export-btn:hover {
+  border-color: var(--black);
+  color: var(--black);
+  box-shadow: var(--shadow-md);
+}
+/* Invoice container — 1:2 aspect ratio preview */
+.shell-invoice {
+  width: 500px;
+  min-height: 1000px;
+  background: #ffffff;
+  padding: 40px 36px 40px;
+  font-family: 'Montreal', sans-serif;
+  color: #3f3f3f;
+  border: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+}
+.si-header {
+  font-family: 'Futura', 'Montreal', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  font-style: normal;
+  color: #DD1D21;
+  margin-bottom: 4px;
+}
+.si-datetime {
+  font-size: 14px;
+  color: #696969;
+  font-weight: 400;
+  margin-bottom: 16px;
+}
+.si-location {
+  font-size: 15px;
+  font-weight: 700;
+  color: #3f3f3f;
+  margin-bottom: 2px;
+}
+.si-code {
+  font-size: 13px;
+  color: #696969;
+  font-weight: 400;
+  margin-bottom: 18px;
+  letter-spacing: 0.2px;
+}
+.si-divider {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 0 0 10px;
+}
+.si-section-label {
+  font-size: 12px;
+  color: #505050;
+  font-weight: 400;
+  margin: 0 -36px;
+  padding: 8px 36px;
+  background: #f7f7f7;
+  border-top: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 18px;
+}
+.si-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.si-item-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #3f3f3f;
+}
+.si-item-amount {
+  font-size: 15px;
+  font-weight: 700;
+  color: #3f3f3f;
+  text-align: right;
+  white-space: nowrap;
+}
+.si-rate {
+  font-size: 13px;
+  color: #696969;
+  font-weight: 400;
+  margin-bottom: 6px;
+}
+.si-discount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 18px;
+}
+.si-discount-text {
+  font-size: 12px;
+  color: #008442;
+  font-weight: 400;
+  flex: 1;
+  padding-right: 12px;
+}
+.si-discount-amount {
+  font-size: 12px;
+  color: #696969;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.si-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 16px 0 14px;
+}
+.si-total-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #3f3f3f;
+}
+.si-total-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #3f3f3f;
+}
+.si-points-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+}
+.si-points-label {
+  font-size: 14px;
+  font-weight: 400;
+  color: #3f3f3f;
+}
+.si-points-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #308242;
+}
+.si-footer {
+  text-align: center;
+  padding-top: 24px;
+  margin-top: auto;
+}
+.si-pecten {
+  margin: 0 auto 12px;
+  width: 48px;
+  height: 45px;
+}
+.si-pecten svg { width: 100%; height: 100%; }
+.si-thankyou {
+  font-family: 'Futura', 'Montreal', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #3f3f3f;
+  margin-bottom: 4px;
+}
+.si-receipt-note {
+  font-size: 12px;
+  color: #696969;
+  font-weight: 400;
+}
+.si-no-discount .si-discount-row { display: none; }
+.si-refuel-label {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 0.2rem 0.6rem;
+  background: var(--light-grey);
+  color: var(--black);
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 6px;
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: 0.04em;
+  z-index: 2;
+  border: 1px solid var(--border);
+}
+.export-all-wrap {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.export-all-btn {
+  padding: 0.55rem 1.2rem;
+  border: 1px solid var(--black);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--black);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.export-all-btn:hover {
+  background: var(--black);
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
 
 /* ── Responsive ── */
 @media (max-width: 1100px) {
@@ -536,6 +898,8 @@ body {
   }
   .main { padding: 1.5rem 1rem 3rem; }
   .hero-title { font-size: 1.4rem; }
+  .shell-invoice { width: 100%; min-height: auto; aspect-ratio: 1/2; }
+  .invoices-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 480px) {
   .kpi-grid { grid-template-columns: 1fr; }
@@ -546,75 +910,72 @@ body {
 <body>
 
 <div class="app">
-  <!-- Sidebar -->
+  <!-- Sidebar — inputs only -->
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-icon">⛽</div>
       <span class="brand-name">Fuel Planner</span>
+      <button class="history-btn" onclick="toggleOdoPanel()" title="Odometer History">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </button>
     </div>
 
-    <div class="tab-bar">
-      <button class="tab-btn active" data-tab="spend" onclick="setTab('spend')">Spend Plan</button>
-      <button class="tab-btn" data-tab="odometer" onclick="setTab('odometer')">Odometer Record</button>
+    <!-- Odometer history overlay -->
+    <div id="odoPanel" class="odo-panel" style="display:none"></div>
+
+    <div class="section-label">This Cycle</div>
+    <div class="input-group">
+      <label>Cycle Start Date (15th)</label>
+      <input type="date" id="startDate" value="2026-04-15">
+    </div>
+    <div class="input-group">
+      <label>Start Odometer (km)</label>
+      <input type="number" id="startOdo" value="50000" step="100">
     </div>
 
-    <!-- Spend Plan inputs -->
-    <div id="spendInputs">
-      <div class="section-label">Cycle Settings</div>
-      <div class="input-group">
-        <label>Cycle Start Date (15th)</label>
-        <input type="date" id="startDate" value="2026-04-15">
-      </div>
-      <div class="input-group">
-        <label>Start Odometer (km)</label>
-        <input type="number" id="startOdo" value="50000" step="100">
-      </div>
+    <button class="generate-btn" onclick="generate(event)">Generate Plan</button>
 
-      <div class="section-label">Vehicle</div>
+    <!-- Saved settings (collapsed by default) -->
+    <div class="settings-toggle" onclick="toggleSettings()">
+      <span class="settings-toggle-label">Settings</span>
+      <span class="settings-toggle-icon" id="settingsIcon">›</span>
+    </div>
+    <div id="settingsPanel" class="settings-panel" style="display:none">
+      <div class="section-label" style="margin-top:0.4rem">Vehicle</div>
       <div class="input-group">
         <label>Daily Office Commute (km)</label>
-        <input type="number" id="dailyKm" value="52" step="1">
+        <input type="number" id="dailyKm" value="52" step="1" onchange="persistSettings()">
       </div>
       <div class="input-group">
         <label>Mileage (km/l)</label>
-        <input type="number" id="mileage" value="14" step="0.5">
+        <input type="number" id="mileage" value="14" step="0.5" onchange="persistSettings()">
       </div>
 
       <div class="section-label">Fuel &amp; Budget</div>
       <div class="input-group">
         <label>Monthly Cap (INR)</label>
-        <input type="number" id="cap" value="19300" step="100">
+        <input type="number" id="cap" value="19300" step="100" onchange="persistSettings()">
       </div>
       <div class="input-row">
         <div class="input-group">
           <label>Min Price (₹/L)</label>
-          <input type="number" id="priceMin" value="100" step="0.5">
+          <input type="number" id="priceMin" value="100" step="0.5" onchange="persistSettings()">
         </div>
         <div class="input-group">
           <label>Max Price (₹/L)</label>
-          <input type="number" id="priceMax" value="103" step="0.5">
+          <input type="number" id="priceMax" value="103" step="0.5" onchange="persistSettings()">
         </div>
       </div>
 
-      <button class="generate-btn" onclick="generate(event)">Generate Plan</button>
-    </div>
-
-    <!-- Odometer Record inputs -->
-    <div id="odoInputs" style="display:none">
-      <div class="section-label">Log a Reading</div>
+      <div class="section-label">Invoice</div>
       <div class="input-group">
-        <label>Month</label>
-        <input type="month" id="odoMonth" value="2026-04">
+        <label>Station Location</label>
+        <input type="text" id="invoiceLocation" value="Hosa Road" onchange="persistSettings()">
       </div>
       <div class="input-group">
-        <label>Start Odometer (km)</label>
-        <input type="number" id="odoStart" value="50000" step="100">
+        <label>Fuel Type</label>
+        <input type="text" id="invoiceFuelType" value="V-Power diesel" onchange="persistSettings()">
       </div>
-      <div class="input-group">
-        <label>End Odometer (km)</label>
-        <input type="number" id="odoEnd" value="52700" step="100">
-      </div>
-      <button class="generate-btn" onclick="saveOdoReading(event)">Save Reading</button>
     </div>
 
     <div style="flex:1"></div>
@@ -773,16 +1134,55 @@ function planSpend(opts) {
   };
 }
 
+// ── Settings persistence (localStorage) ──
+const SETTINGS_KEY = 'fuelPlannerSettings';
+const SETTINGS_FIELDS = ['dailyKm','mileage','cap','priceMin','priceMax','invoiceLocation','invoiceFuelType'];
+
+function persistSettings() {
+  const s = {};
+  SETTINGS_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    s[id] = el.type === 'number' ? parseFloat(el.value) : el.value;
+  });
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
+
+function restoreSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+    if (s) {
+      SETTINGS_FIELDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && s[id] !== undefined) el.value = s[id];
+      });
+    }
+    // Prefill start odometer from last cycle's end odometer
+    const lastEnd = localStorage.getItem('lastEndOdo');
+    if (lastEnd) {
+      document.getElementById('startOdo').value = Math.round(parseFloat(lastEnd));
+    }
+  } catch {}
+}
+
+function toggleSettings() {
+  const panel = document.getElementById('settingsPanel');
+  const icon = document.getElementById('settingsIcon');
+  const open = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  icon.classList.toggle('open', open);
+}
+
+// Restore on load
+restoreSettings();
+
 // ── UI State ──
 let currentTab = 'spend';
 let lastResult = null;
 
 function setTab(tab) {
   currentTab = tab;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  document.getElementById('spendInputs').style.display = tab === 'spend' ? 'block' : 'none';
-  document.getElementById('odoInputs').style.display = tab === 'odometer' ? 'block' : 'none';
-  if (tab === 'odometer') renderOdoHistory();
+  document.querySelectorAll('.content-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  if (tab === 'invoices') renderInvoices();
   else if (lastResult) renderResult(lastResult);
   else renderEmpty();
 }
@@ -805,6 +1205,76 @@ function kpiCard(icon, label, value, cls = '') {
     <div class="kpi-lbl">${label}</div>
     <div class="kpi-val">${value}</div>
   </div>`;
+}
+
+// ── Tabs HTML (shown in main area after plan generation) ──
+function tabsHTML(active) {
+  return `<div class="content-tabs">
+    <button class="content-tab-btn ${active==='spend'?'active':''}" data-tab="spend" onclick="setTab('spend')">Spend Plan</button>
+    <button class="content-tab-btn ${active==='invoices'?'active':''}" data-tab="invoices" onclick="setTab('invoices')">Invoices</button>
+  </div>`;
+}
+
+// ── Odometer panel in sidebar ──
+function toggleOdoPanel() {
+  const panel = document.getElementById('odoPanel');
+  const btn = document.querySelector('.history-btn');
+  const open = panel.style.display === 'none';
+  if (open) {
+    renderOdoPanel();
+    panel.style.display = 'block';
+    btn.classList.add('active');
+  } else {
+    panel.style.display = 'none';
+    btn.classList.remove('active');
+  }
+}
+
+function renderOdoPanel() {
+  const history = getOdoHistory();
+  let html = `<div class="odo-panel-header">
+    <span class="odo-panel-title">Odometer History</span>
+    <button class="odo-panel-close" onclick="toggleOdoPanel()">✕</button>
+  </div>`;
+
+  if (history.length === 0) {
+    html += `<div class="odo-empty">
+      <div class="odo-empty-icon">📋</div>
+      <div class="odo-empty-text">No readings yet</div>
+      <div class="odo-empty-hint">Generate a plan to auto-save readings</div>
+    </div>`;
+  } else {
+    html += '<div class="odo-history">';
+    history.forEach((h, i) => {
+      const [y, m] = h.month.split('-');
+      const monthName = MONTHS[parseInt(m) - 1];
+      html += `<div class="odo-card anim-in" style="animation-delay:${i * 0.04}s">
+        <div class="odo-month">
+          <div class="odo-month-name">${monthName}${h.auto ? '<span class="odo-auto-tag"> AUTO</span>' : ''}</div>
+          <div class="odo-month-year">${y}</div>
+        </div>
+        <div class="odo-divider"></div>
+        <div class="odo-details">
+          <div class="odo-detail-item">
+            <div class="odo-detail-label">Start</div>
+            <div class="odo-detail-value">${fmt1(h.start)} km</div>
+          </div>
+          <div class="odo-detail-item">
+            <div class="odo-detail-label">End</div>
+            <div class="odo-detail-value">${fmt1(h.end)} km</div>
+          </div>
+          <div class="odo-detail-item">
+            <div class="odo-detail-label">Dist</div>
+            <div class="odo-km-badge">${fmt(h.km)} km</div>
+          </div>
+        </div>
+        <button onclick="deleteOdoReading('${h.month}')" style="background:none;border:none;cursor:pointer;font-size:0.85rem;color:var(--text-muted);padding:0.2rem;border-radius:4px;transition:color 0.2s;flex-shrink:0" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='var(--text-muted)'" title="Remove">✕</button>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  document.getElementById('odoPanel').innerHTML = html;
 }
 
 function renderEmpty() {
@@ -850,6 +1320,11 @@ function generate(event) {
     if (opts.mileage <= 0) throw new Error('Mileage must be > 0');
     if (opts.priceMax < opts.priceMin) throw new Error('Max price must be >= min price');
     lastResult = planSpend(opts);
+    autoSaveOdoFromPlan(lastResult);
+    persistSettings();
+    // Save end odo as next cycle's start
+    localStorage.setItem('lastEndOdo', lastResult.endOdo);
+    currentTab = 'spend';
     renderResult(lastResult);
     showToast('Plan generated successfully');
   } catch (e) {
@@ -867,6 +1342,7 @@ function renderResult(r) {
         <span class="badge">Spend Plan</span>
       </div>
     </div>
+    ${tabsHTML('spend')}
     <div class="sec-header anim-in"><div class="sec-icon">📊</div><h2>Cycle Summary</h2><div class="sec-line"></div></div>
     <div class="kpi-grid">
       ${kpiCard('📅', 'Working Days', r.workingDays)}
@@ -921,106 +1397,269 @@ function saveOdoHistory(data) {
   localStorage.setItem('odoHistory', JSON.stringify(data));
 }
 
-function saveOdoReading(event) {
-  if (event) {
-    const btn = event.currentTarget, rect = btn.getBoundingClientRect();
-    const ripple = document.createElement('span');
-    ripple.className = 'ripple';
-    const size = Math.max(rect.width, rect.height);
-    ripple.style.width = ripple.style.height = size + 'px';
-    ripple.style.left = (event.clientX - rect.left - size/2) + 'px';
-    ripple.style.top = (event.clientY - rect.top - size/2) + 'px';
-    btn.appendChild(ripple);
-    setTimeout(() => ripple.remove(), 500);
-  }
-
-  const month = document.getElementById('odoMonth').value;
-  const start = val('odoStart');
-  const end = val('odoEnd');
-
-  if (!month) { showToast('Please select a month'); return; }
-  if (end < start) { showToast('End must be >= Start'); return; }
-
+function autoSaveOdoFromPlan(result) {
+  const m = result.cycleStart.getMonth();
+  const y = result.cycleStart.getFullYear();
+  const monthKey = `${y}-${String(m + 1).padStart(2, '0')}`;
   const history = getOdoHistory();
-  // Replace if same month exists
-  const idx = history.findIndex(h => h.month === month);
-  const entry = { month, start, end, km: r2(end - start) };
+  const idx = history.findIndex(h => h.month === monthKey);
+  const entry = { month: monthKey, start: result.startOdo, end: result.endOdo, km: r2(result.totalKm), auto: true };
   if (idx >= 0) history[idx] = entry;
   else history.push(entry);
-
-  // Sort descending by month, keep last 3
   history.sort((a, b) => b.month.localeCompare(a.month));
-  saveOdoHistory(history.slice(0, 3));
-
-  showToast('Reading saved');
-  renderOdoHistory();
+  saveOdoHistory(history.slice(0, 12));
 }
 
 function deleteOdoReading(month) {
   const history = getOdoHistory().filter(h => h.month !== month);
   saveOdoHistory(history);
   showToast('Reading removed');
-  renderOdoHistory();
+  renderOdoPanel();
 }
 
-function renderOdoHistory() {
-  const history = getOdoHistory();
+// ── Shell Invoice ──
+// Exact Shell pecten extracted from the PDF vector paths
+const SHELL_PECTEN = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="274.25 706.53 47.5 43.94" width="48" height="45">
+  <path fill="#FBCE07" d="M295.25 749.26L283.17 749.26L282.1 740.34L274.72 735.04C274.39 733.5 274.25 731.89 274.25 730.28C274.25 717.13 284.92 706.53 298 706.53C311.14 706.53 321.75 717.2 321.75 730.28C321.75 731.89 321.61 733.5 321.28 735.04L313.96 740.34L312.82 749.26L300.75 749.26L300.08 749.8C299.47 750.27 298.74 750.47 298 750.47C297.26 750.47 296.52 750.2 295.92 749.8Z"/>
+  <path fill="#DD1D21" fill-rule="evenodd" d="M295.25 749.26L283.17 749.26L282.1 740.34L274.72 735.04C274.39 733.5 274.25 731.89 274.25 730.28C274.25 717.13 284.92 706.53 298 706.53C311.08 706.53 321.75 717.2 321.75 730.28C321.75 731.89 321.61 733.5 321.28 735.04L313.96 740.34L312.82 749.26L300.75 749.26L300.08 749.8C299.47 750.27 298.74 750.47 298 750.47C297.26 750.47 296.52 750.2 295.92 749.8ZM295.65 745.1L286.86 745.1L285.99 737.99L278.75 732.76C278.55 731.96 278.41 731.08 278.41 730.21C278.41 728.8 278.68 727.39 279.28 726.12L292.09 739.07L279.68 723.7C280.16 721.69 281.23 719.95 282.77 718.54L293.91 737.79L284.05 716.79C285.32 715.12 287.13 713.84 289.14 713.24L295.98 737.12L291.02 712.23C292.57 711.36 294.24 710.96 295.98 710.96C296.32 710.96 296.72 710.96 297.06 711.03L298.07 736.85L299.07 711.03C299.41 710.96 299.81 710.96 300.14 710.96C301.89 710.96 303.57 711.43 305.11 712.23L300.14 737.12L306.99 713.17C309 713.78 310.81 715.05 312.09 716.73L302.16 737.79L313.29 718.54C314.84 719.88 315.91 721.69 316.38 723.7L303.97 739.07L316.78 726.12C317.39 727.39 317.65 728.8 317.65 730.21C317.65 731.08 317.52 731.89 317.32 732.76L310.07 737.99L309.2 745.1L300.48 745.1L299.14 746.04C298.8 746.31 298.4 746.38 298 746.38C297.6 746.38 297.2 746.24 296.86 746.04Z"/>
+</svg>`;
+
+function generateInvoiceDates(cycleStart, cycleEnd, count, rng) {
+  const startMs = cycleStart.getTime();
+  const endMs = cycleEnd.getTime();
+  const span = endMs - startMs;
+  const dates = [];
+  for (let i = 0; i < count; i++) {
+    const offset = (i + 0.3 + rng() * 0.5) / count;
+    const d = new Date(startMs + span * Math.min(offset, 0.97));
+    const hours = 6 + Math.floor(rng() * 3);
+    const mins = Math.floor(rng() * 60);
+    d.setHours(hours, mins, 0, 0);
+    dates.push(d);
+  }
+  return dates;
+}
+
+// Unique random station code per invoice. First digit > 1, no repeating patterns.
+function generateStationCode(rng) {
+  const first = 2 + Math.floor(rng() * 8); // 2-9
+  const digits = [first];
+  for (let i = 1; i < 16; i++) {
+    let d;
+    do { d = Math.floor(rng() * 10); } while (d === digits[i-1]); // no consecutive repeats
+    digits.push(d);
+  }
+  return `${digits[0]}_${digits.slice(1,6).join('')}_${digits.slice(6,11).join('')}_${digits.slice(11,16).join('')}`;
+}
+
+function fmtInvoiceDate(d) {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${dd}/${mm}/${yyyy}, ${hh}:${mi}`;
+}
+
+function fmtINR(n) {
+  return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function buildInvoiceHTML(refuel, date, code, location, fuelType) {
+  const hasDiscount = refuel.discount > 0;
+  const finalPaid = refuel.final;
+  const points = Math.round(refuel.amount / 31.5);
+  const bonusPoints = Math.round(refuel.amount / 12);
+
+  return `<div class="shell-invoice ${hasDiscount ? '' : 'si-no-discount'}" id="invoice-${refuel.number}">
+    <div class="si-header">Transaction details</div>
+    <div class="si-datetime">${fmtInvoiceDate(date)}</div>
+    <div class="si-location">${location}</div>
+    <div class="si-code">${code}</div>
+    <div class="si-section-label">Purchased items</div>
+    <div class="si-item-row">
+      <span class="si-item-name">02 - ${fuelType}</span>
+      <span class="si-item-amount">INR ${fmtINR(refuel.amount)}</span>
+    </div>
+    <div class="si-rate">${fmtINR(refuel.litres)} x INR ${fmtINR(refuel.price)}</div>
+    <div class="si-discount-row">
+      <span class="si-discount-text">Get \u20B9100/- off on fuelling diesel above \u20B92500</span>
+      <span class="si-discount-amount">- INR ${fmtINR(refuel.discount)}</span>
+    </div>
+    <div class="si-divider"></div>
+    <div class="si-total-row">
+      <span class="si-total-label">Total Paid</span>
+      <span class="si-total-amount">INR ${fmtINR(finalPaid)}</span>
+    </div>
+    <div class="si-divider"></div>
+    <div class="si-points-row">
+      <span class="si-points-label">Points earned</span>
+      <span class="si-points-value">+ ${points}</span>
+    </div>
+    <div class="si-points-row">
+      <span class="si-points-label">Points earned (bonus)</span>
+      <span class="si-points-value">+ ${bonusPoints}</span>
+    </div>
+    <div class="si-footer">
+      <div class="si-pecten">${SHELL_PECTEN}</div>
+      <div class="si-thankyou">Thank you for visiting Shell</div>
+      <div class="si-receipt-note">For full details please refer to your receipt</div>
+    </div>
+  </div>`;
+}
+
+function renderInvoices() {
+  if (!lastResult) {
+    document.getElementById('resultArea').innerHTML = `
+      <div class="hero" style="animation: fadeIn 0.35s ease">
+        <div class="hero-title">Shell Invoices</div>
+        <div class="hero-subtitle">Preview and export fuel invoices</div>
+      </div>
+      ${tabsHTML('invoices')}
+      <div class="empty-state">
+        <div class="empty-icon">🧾</div>
+        <div class="empty-title">No Plan Generated Yet</div>
+        <div class="empty-desc">Generate a plan first using the sidebar. Then come back here to preview and export Shell invoices for each refuel.</div>
+      </div>`;
+    return;
+  }
+
+  const r = lastResult;
+  const location = document.getElementById('invoiceLocation').value || 'Hosa Road';
+  const fuelType = document.getElementById('invoiceFuelType').value || 'V-Power diesel';
+  const baseSeed = dateSeed(document.getElementById('startDate').value);
+  const rng = mulberry32(baseSeed + 7777);
+  const dates = generateInvoiceDates(r.cycleStart, r.cycleEnd, r.refuels.length, rng);
 
   let html = `
     <div class="hero" style="animation: fadeIn 0.35s ease">
-      <div class="hero-title">Odometer Record</div>
-      <div class="hero-subtitle">Track your last 3 months of odometer readings</div>
+      <div class="hero-title">Shell Invoices</div>
+      <div class="hero-subtitle">
+        ${fmtDate(r.cycleStart)} \u2014 ${fmtDateFull(r.cycleEnd)}
+        <span class="badge">${r.refuels.length} Invoices</span>
+      </div>
     </div>
-    <div class="sec-header anim-in"><div class="sec-icon">🏁</div><h2>Recent Readings</h2><div class="sec-line"></div></div>`;
+    ${tabsHTML('invoices')}
+    <div class="export-all-wrap anim-in">
+      <button class="export-all-btn" onclick="exportAllInvoices()">Export All as ZIP</button>
+    </div>
+    <div class="invoices-grid">`;
 
-  if (history.length === 0) {
-    html += `
-      <div class="odo-empty anim-in">
-        <div class="odo-empty-icon">📋</div>
-        <div class="odo-empty-text">No readings logged yet</div>
-        <div class="odo-empty-hint">Use the sidebar to log your first odometer reading</div>
-      </div>`;
-  } else {
-    html += '<div class="odo-history">';
-    history.forEach((h, i) => {
-      const [y, m] = h.month.split('-');
-      const monthName = MONTHS[parseInt(m) - 1];
-      html += `
-        <div class="odo-card anim-in" style="animation-delay:${i * 0.06}s">
-          <div class="odo-month">
-            <div class="odo-month-name">${monthName}</div>
-            <div class="odo-month-year">${y}</div>
-          </div>
-          <div class="odo-divider"></div>
-          <div class="odo-details">
-            <div class="odo-detail-item">
-              <div class="odo-detail-label">Start</div>
-              <div class="odo-detail-value">${fmt1(h.start)} km</div>
-            </div>
-            <div class="odo-detail-item">
-              <div class="odo-detail-label">End</div>
-              <div class="odo-detail-value">${fmt1(h.end)} km</div>
-            </div>
-            <div class="odo-detail-item">
-              <div class="odo-detail-label">Distance</div>
-              <div class="odo-km-badge">${fmt(h.km)} km</div>
-            </div>
-          </div>
-          <button onclick="deleteOdoReading('${h.month}')" style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--text-muted);padding:0.3rem;border-radius:6px;transition:color 0.2s" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='var(--text-muted)'" title="Remove">✕</button>
-        </div>`;
-    });
-    html += '</div>';
-  }
+  r.refuels.forEach((ref, i) => {
+    // Unique code per invoice
+    const codeRng = mulberry32(baseSeed + 9999 + i * 1337);
+    const code = generateStationCode(codeRng);
+    html += `<div class="invoice-card-wrap anim-in" style="animation-delay:${i * 0.08}s">
+      <span class="si-refuel-label">Refuel #${ref.number}</span>
+      <button class="invoice-export-btn" onclick="exportInvoice(${ref.number})">Save JPEG</button>
+      ${buildInvoiceHTML(ref, dates[i], code, location, fuelType)}
+    </div>`;
+  });
 
+  html += '</div>';
   document.getElementById('resultArea').innerHTML = html;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Export with 1:2 ratio (500×1000 content, scaled 2x = 1000×2000 JPEG) ──
+async function exportInvoice(num) {
+  const el = document.getElementById('invoice-' + num);
+  if (!el) return;
+  try {
+    // Target: 1000x2000 JPEG (1:2 ratio)
+    const targetW = 500;
+    const targetH = 1000;
+
+    // Temporarily resize invoice for export
+    const origW = el.style.width;
+    const origPB = el.style.paddingBottom;
+    el.style.width = targetW + 'px';
+
+    // Measure content height and add bottom padding to fill 1:2 ratio
+    const contentH = el.scrollHeight;
+    const neededPadding = Math.max(0, targetH - contentH);
+    el.style.paddingBottom = (neededPadding + 40) + 'px';
+
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      width: targetW,
+      height: targetH,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      logging: false,
+    });
+
+    // Restore original styles
+    el.style.width = origW;
+    el.style.paddingBottom = origPB;
+
+    const link = document.createElement('a');
+    link.download = `shell-invoice-refuel-${num}.jpg`;
+    link.href = canvas.toDataURL('image/jpeg', 0.95);
+    link.click();
+    showToast(`Invoice #${num} saved`);
+  } catch (e) {
+    showToast('Export failed: ' + e.message);
+  }
+}
+
+async function exportAllInvoices() {
+  if (!lastResult) return;
+  const zip = new JSZip();
+  const btn = document.querySelector('.export-all-btn');
+  const origText = btn.textContent;
+  btn.textContent = 'Generating ZIP...';
+  btn.disabled = true;
+
+  try {
+    for (let i = 0; i < lastResult.refuels.length; i++) {
+      const num = lastResult.refuels[i].number;
+      const el = document.getElementById('invoice-' + num);
+      if (!el) continue;
+
+      const targetW = 500, targetH = 1000;
+      const origW = el.style.width;
+      const origPB = el.style.paddingBottom;
+      el.style.width = targetW + 'px';
+      const contentH = el.scrollHeight;
+      const neededPadding = Math.max(0, targetH - contentH);
+      el.style.paddingBottom = (neededPadding + 40) + 'px';
+
+      const canvas = await html2canvas(el, {
+        scale: 2, width: targetW, height: targetH,
+        backgroundColor: '#ffffff', useCORS: true, logging: false,
+      });
+
+      el.style.width = origW;
+      el.style.paddingBottom = origPB;
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      const base64 = dataUrl.split(',')[1];
+      zip.file(`shell-invoice-refuel-${num}.jpg`, base64, { base64: true });
+
+      btn.textContent = `Generating ZIP... (${i + 1}/${lastResult.refuels.length})`;
+    }
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const link = document.createElement('a');
+    link.download = `shell-invoices-${lastResult.cycleStart.toISOString().slice(0,7)}.zip`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+    showToast('All invoices exported as ZIP');
+  } catch (e) {
+    showToast('Export failed: ' + e.message);
+  } finally {
+    btn.textContent = origText;
+    btn.disabled = false;
+  }
 }
 
 // ── Keyboard shortcut ──
 document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
     e.preventDefault();
-    if (currentTab === 'spend') generate(null);
-    else saveOdoReading(null);
+    generate(null);
   }
 });
 </script>
